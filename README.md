@@ -115,36 +115,70 @@ NODE_ENV=development
 
 ## 🚀 Deployment
 
-### Deploy to Render
+Your Hospital Queue Management System is ready to deploy! Choose your option:
 
-Your application is ready to deploy to Render! We've prepared everything for you.
+### ⭐ **RECOMMENDED: Deploy FREE on Vercel + Railway**
 
-**Quick Start:**
-1. Push code to GitHub
-2. Go to https://render.com → New → Blueprint
-3. Select your repository
-4. Click "Create New Blueprint"
+**Cost:** $0 (completely free)
+**No Credit Card Required**
+**Setup Time:** ~30 minutes
 
-**Deployment Documentation:**
-- ⭐ **Start Here**: [RENDER_STEP_BY_STEP.md](./RENDER_STEP_BY_STEP.md) - Detailed guide
-- **Quick Way**: [RENDER_QUICK_START.md](./RENDER_QUICK_START.md) - 5-minute guide
-- **Reference**: [RENDER_DEPLOYMENT_GUIDE.md](./RENDER_DEPLOYMENT_GUIDE.md) - Complete guide
-- **Checklist**: [RENDER_DEPLOYMENT_CHECKLIST.md](./RENDER_DEPLOYMENT_CHECKLIST.md) - Verification
-- **Architecture**: [RENDER_ARCHITECTURE.md](./RENDER_ARCHITECTURE.md) - How it works
-- **Quick Ref**: [RENDER_QUICK_REFERENCE.md](./RENDER_QUICK_REFERENCE.md) - Reference card
+- Frontend on Vercel (lightning fast CDN)
+- Backend on Railway (generous free tier)
+- Real-time WebSocket communication
+- Perfect for hospital queue system
 
-**Key Files Created:**
-- `render.yaml` - Deployment configuration
-- `.env.example` - Environment template
-- `client/.env.example` - Frontend environment template
+👉 **Guide:** [DEPLOY_VERCEL_RAILWAY.md](./DEPLOY_VERCEL_RAILWAY.md)
 
-After deployment, your app will be available at:
-- Frontend: `https://hospital-queue-client.onrender.com`
-- Backend: `https://hospital-queue-server.onrender.com`
+**Quick Steps:**
+1. Read the guide (10 min)
+2. Deploy frontend on Vercel (10 min)
+3. Deploy backend on Railway (10 min)
+4. Your app is live and FREE! 🎉
+
+---
+
+### Alternative: Deploy on Render (With Billing)
+
+**Cost:** ~$7-15/month (free tier: 15 min spin-down)
+**Requires Credit Card**
+**Setup Time:** ~15 minutes
+
+- All-in-one platform
+- Blueprint automation (easiest setup)
+- Great documentation & support
+
+**Guides:**
+- Quick: [RENDER_QUICK_START.md](./RENDER_QUICK_START.md)
+- Detailed: [RENDER_STEP_BY_STEP.md](./RENDER_STEP_BY_STEP.md)
+
+---
+
+### Compare All Options
+
+See [DEPLOYMENT_OPTIONS.md](./DEPLOYMENT_OPTIONS.md) for detailed comparison of all deployment platforms.
+
+---
+
+## 📊 Deployment Files
+
+**Environment Templates:**
+- `.env.example` - Backend environment
+- `client/.env.example` - Frontend environment
+
+**Render Configuration:**
+- `render.yaml` - Render deployment blueprint
+
+**Documentation:**
+- [DEPLOYMENT_OPTIONS.md](./DEPLOYMENT_OPTIONS.md) - All options explained
+- [DEPLOY_VERCEL_RAILWAY.md](./DEPLOY_VERCEL_RAILWAY.md) - Free deployment (RECOMMENDED)
+- [RENDER_STEP_BY_STEP.md](./RENDER_STEP_BY_STEP.md) - Render detailed guide
+- [RENDER_QUICK_START.md](./RENDER_QUICK_START.md) - Render quick guide
+- [RENDER_ARCHITECTURE.md](./RENDER_ARCHITECTURE.md) - How Render works
 
 ## Deployment Configuration
 
-The system is configured for deployment on Render:
+The system is configured for multiple deployment platforms:
 
 **Backend Service:**
 - Runs `npm install && npm start` in the `server` folder
@@ -152,7 +186,7 @@ The system is configured for deployment on Render:
 - Port: 5000
 
 **Frontend Service:**
-- Runs `npm run build` then `serve -s build -l 3000` in the `client` folder
+- Runs `npm run build` then serves the built app in the `client` folder
 - Uses environment variables for API connections
 - Port: 3000
 
