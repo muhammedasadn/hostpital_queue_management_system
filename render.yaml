@@ -12,11 +12,9 @@ services:
       - key: PORT
         value: 5000
       - key: FRONTEND_URL
-        # Will be automatically set by Render
-        fromService:
-          type: web
-          name: hospital-queue-client
-          property: url
+        # Set to your frontend URL after deployment
+        # Example: https://hospital-queue-client.onrender.com
+        value: https://hospital-queue-client.onrender.com
 
   # Frontend Service
   - type: web
@@ -27,15 +25,10 @@ services:
     startCommand: npx serve -s build -l 3000
     envVars:
       - key: REACT_APP_API_URL
-        # Will be automatically set to backend URL
-        fromService:
-          type: web
-          name: hospital-queue-server
-          property: url
-          path: /api
+        # Backend API URL - update after backend deploys
+        # Example: https://hospital-queue-server.onrender.com/api
+        value: https://hospital-queue-server.onrender.com/api
       - key: REACT_APP_SOCKET_URL
-        # Will be automatically set to backend URL
-        fromService:
-          type: web
-          name: hospital-queue-server
-          property: url
+        # Backend WebSocket URL - update after backend deploys
+        # Example: https://hospital-queue-server.onrender.com
+        value: https://hospital-queue-server.onrender.com
