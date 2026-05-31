@@ -113,6 +113,53 @@ PORT=5000
 NODE_ENV=development
 ```
 
+## 🚀 Deployment
+
+### Deploy to Render
+
+Your application is ready to deploy to Render! We've prepared everything for you.
+
+**Quick Start:**
+1. Push code to GitHub
+2. Go to https://render.com → New → Blueprint
+3. Select your repository
+4. Click "Create New Blueprint"
+
+**Deployment Documentation:**
+- ⭐ **Start Here**: [RENDER_STEP_BY_STEP.md](./RENDER_STEP_BY_STEP.md) - Detailed guide
+- **Quick Way**: [RENDER_QUICK_START.md](./RENDER_QUICK_START.md) - 5-minute guide
+- **Reference**: [RENDER_DEPLOYMENT_GUIDE.md](./RENDER_DEPLOYMENT_GUIDE.md) - Complete guide
+- **Checklist**: [RENDER_DEPLOYMENT_CHECKLIST.md](./RENDER_DEPLOYMENT_CHECKLIST.md) - Verification
+- **Architecture**: [RENDER_ARCHITECTURE.md](./RENDER_ARCHITECTURE.md) - How it works
+- **Quick Ref**: [RENDER_QUICK_REFERENCE.md](./RENDER_QUICK_REFERENCE.md) - Reference card
+
+**Key Files Created:**
+- `render.yaml` - Deployment configuration
+- `.env.example` - Environment template
+- `client/.env.example` - Frontend environment template
+
+After deployment, your app will be available at:
+- Frontend: `https://hospital-queue-client.onrender.com`
+- Backend: `https://hospital-queue-server.onrender.com`
+
+## Deployment Configuration
+
+The system is configured for deployment on Render:
+
+**Backend Service:**
+- Runs `npm install && npm start` in the `server` folder
+- Uses environment variables for production CORS
+- Port: 5000
+
+**Frontend Service:**
+- Runs `npm run build` then `serve -s build -l 3000` in the `client` folder
+- Uses environment variables for API connections
+- Port: 3000
+
+**Environment Variables:**
+- Backend: `NODE_ENV`, `PORT`, `FRONTEND_URL`
+- Frontend: `REACT_APP_API_URL`, `REACT_APP_SOCKET_URL`
+
 ## Technologies Used
 
 ### Frontend

@@ -4,9 +4,13 @@ const socketIO = require('socket.io');
 require('dotenv').config();
 
 const server = http.createServer(app);
+
+// Get frontend URL from environment
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
 const io = socketIO(server, {
   cors: {
-    origin: 'http://localhost:3000',
+    origin: frontendUrl,
     methods: ['GET', 'POST']
   }
 });
