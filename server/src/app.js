@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api', require('./src/routes/queueRoutes'));
+app.use('/api', require('./routes/queueRoutes'));
 
 // Basic route
 app.get('/', (req, res) => {
