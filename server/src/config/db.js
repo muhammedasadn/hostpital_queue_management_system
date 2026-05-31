@@ -6,25 +6,37 @@ let queues = [
     _id: '1',
     department: 'General',
     tokens: [],
-    avgWaitTime: 0
+    avgWaitTime: 0,
+    addToken: function(token) {
+      this.tokens.push(token);
+    }
   },
   {
     _id: '2',
     department: 'Cardiology',
     tokens: [],
-    avgWaitTime: 0
+    avgWaitTime: 0,
+    addToken: function(token) {
+      this.tokens.push(token);
+    }
   },
   {
     _id: '3',
     department: 'Neurology',
     tokens: [],
-    avgWaitTime: 0
+    avgWaitTime: 0,
+    addToken: function(token) {
+      this.tokens.push(token);
+    }
   },
   {
     _id: '4',
     department: 'Orthopedics',
     tokens: [],
-    avgWaitTime: 0
+    avgWaitTime: 0,
+    addToken: function(token) {
+      this.tokens.push(token);
+    }
   }
 ];
 
