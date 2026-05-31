@@ -126,6 +126,18 @@
   display: none;
 }
 
+.qr-file-input:disabled + .qr-upload-label {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qr-hint {
+  margin-top: 10px;
+  font-size: 0.85em;
+  color: #999;
+  font-style: italic;
+}
+
 .error-message {
   background: #ffebee;
   color: #c62828;
