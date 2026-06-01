@@ -2,6 +2,12 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
+console.log('🔧 API Configuration:', {
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+  DEFAULT_FALLBACK: 'http://localhost:5000/api',
+  FINAL_API_URL: API_URL
+});
+
 const queueApi = {
   // Get all queues
   getQueues: async () => {
