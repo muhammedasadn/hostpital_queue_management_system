@@ -34,9 +34,11 @@ function PatientDashboard() {
   const fetchQueues = async () => {
     try {
       const data = await queueApi.getQueues();
-      setQueues(data);
+      // Ensure data is always an array
+      setQueues(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching queues:', error);
+      setQueues([]);
     }
   };
 
@@ -261,7 +263,7 @@ function PatientDashboard() {
               <div className="departments-info">
                 <h3>Available Departments</h3>
                 <div className="departments-list">
-                  {queues.map(queue => (
+                  {Array.isArray(queues) && queues.map(queue => (
                     <div key={queue._id} className="dept-card">
                       <div className="dept-name">{queue.department}</div>
                       <div className="dept-waiting">Waiting: {queue.tokens.length}</div>
@@ -291,7 +293,7 @@ function PatientDashboard() {
           <div className="tab-content">
             <h2>📊 View All Queues</h2>
             <div className="queues-grid">
-              {queues.map((queue) => (
+              {Array.isArray(queues) && queues.map((queue) => (
                 <div key={queue._id} className="queue-item">
                   <h3>{queue.department}</h3>
                   <div className="queue-stat">
