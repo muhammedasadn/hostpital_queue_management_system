@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ListFilter, 
   Activity, 
   Search, 
   RefreshCw, 
@@ -8,7 +7,6 @@ import {
   Users, 
   Building2, 
   ArrowLeft,
-  ShieldCheck,
   Radio
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
