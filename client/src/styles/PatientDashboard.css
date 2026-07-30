@@ -312,7 +312,7 @@
 .empty-token-widget h3 {
   font-size: 1.4rem;
   font-weight: 700;
-  color: white;
+  color: rgb(170, 34, 34);
   margin: 0;
 }
 
@@ -414,7 +414,7 @@
 
 .input-group select option {
   background: var(--bg-card-dark);
-  color: white;
+  color: rgb(199, 51, 51);
 }
 
 .form-alert {
