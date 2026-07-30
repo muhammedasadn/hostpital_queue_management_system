@@ -1,44 +1,30 @@
 const http = require("http");
-const socketIO = require("socket.io");
 require("dotenv").config();
 
 const app = require("./src/app");
-const connectDB = require("./src/config/db");
+const { connectDB } = require("./src/config/db");
+const { initializeSocket } = require("./src/socket");
 
-// Connect MongoDB
+// Connect MongoDB (or fallback gracefully to Stateful In-Memory mode)
 connectDB();
 
 const server = http.createServer(app);
 
 const PORT = process.env.PORT || 5000;
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
-
-const io = socketIO(server, {
-  cors: {
-    origin: FRONTEND_URL,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true,
-  },
-});
-
-// Make io accessible inside controllers/routes
+// Initialize Socket.IO
+const io = initializeSocket(server);
 app.set("io", io);
 
-// Socket.IO connection
-io.on("connection", (socket) => {
-  console.log("New client connected:", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+// Default Health Route
+app.get("/", (req, res) => {
+  res.json({
+    status: "online",
+    message: "Hospital CareQueue API is active",
+    timestamp: new Date()
   });
 });
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("Hospital Queue Management API is running");
-});
-
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Hospital CareQueue Server running on port ${PORT}`);
 });
