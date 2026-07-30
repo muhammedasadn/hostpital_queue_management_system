@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { QueueModel } = require('../models/Queue');
 const { CounterModel } = require('../models/Counter');
 const TokenModel = require('../models/Token');
@@ -7,7 +8,6 @@ const seedDatabase = require('../config/seed');
 const dataService = {
   // GET ALL QUEUES WITH ACTIVE TOKENS FROM MONGODB
   getQueues: async () => {
-    // Ensure queues exist in database
     await seedDatabase();
     
     const dbQueues = await QueueModel.find().lean();
@@ -60,16 +60,19 @@ const dataService = {
 
     const tokenObj = savedToken.toObject();
     tokenObj.position = waitingBefore + 1;
-    tokenObj._id = savedToken.tokenId; // Provide clean _id alias for frontend
+    tokenObj._id = savedToken.tokenId; // Clean alias for client
 
     return tokenObj;
   },
 
   // GET TOKEN STATUS FROM MONGODB
   getTokenStatus: async (tokenId) => {
-    const token = await TokenModel.findOne({
-      $or: [{ tokenId: tokenId }, { tokenNumber: tokenId }]
-    }).lean();
+    const isObjectId = mongoose.Types.ObjectId.isValid(tokenId);
+    const query = isObjectId 
+      ? { $or: [{ tokenId: tokenId }, { tokenNumber: tokenId }, { _id: tokenId }] }
+      : { $or: [{ tokenId: tokenId }, { tokenNumber: tokenId }] };
+
+    const token = await TokenModel.findOne(query).lean();
 
     if (!token) return null;
 
@@ -90,9 +93,12 @@ const dataService = {
 
   // CALL NEXT TOKEN FOR DOCTOR COUNTER IN MONGODB
   callNextToken: async (counterId) => {
-    const counter = await CounterModel.findOne({
-      $or: [{ counterId: counterId }, { _id: counterId }]
-    });
+    const isObjectId = mongoose.Types.ObjectId.isValid(counterId);
+    const counterQuery = isObjectId
+      ? { $or: [{ counterId: counterId }, { _id: counterId }] }
+      : { counterId: counterId };
+
+    const counter = await CounterModel.findOne(counterQuery);
 
     if (!counter) return null;
 
@@ -120,14 +126,22 @@ const dataService = {
 
   // COMPLETE TOKEN IN MONGODB
   completeToken: async (counterId, tokenId) => {
+    const isTokenObjectId = mongoose.Types.ObjectId.isValid(tokenId);
+    const tokenQuery = isTokenObjectId
+      ? { $or: [{ tokenId: tokenId }, { tokenNumber: tokenId }, { _id: tokenId }] }
+      : { $or: [{ tokenId: tokenId }, { tokenNumber: tokenId }] };
+
     await TokenModel.findOneAndUpdate(
-      { $or: [{ tokenId: tokenId }, { tokenNumber: tokenId }] },
+      tokenQuery,
       { status: 'completed', completedAt: new Date() }
     );
 
-    const counter = await CounterModel.findOne({
-      $or: [{ counterId: counterId }, { _id: counterId }]
-    });
+    const isCounterObjectId = mongoose.Types.ObjectId.isValid(counterId);
+    const counterQuery = isCounterObjectId
+      ? { $or: [{ counterId: counterId }, { _id: counterId }] }
+      : { counterId: counterId };
+
+    const counter = await CounterModel.findOne(counterQuery);
 
     if (counter) {
       counter.currentToken = null;
