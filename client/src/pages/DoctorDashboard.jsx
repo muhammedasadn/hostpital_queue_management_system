@@ -10,7 +10,6 @@ import {
   LogOut,
   CheckCircle,
   Building2,
-  ChevronRight,
   Sparkles,
   Volume2
 } from 'lucide-react';

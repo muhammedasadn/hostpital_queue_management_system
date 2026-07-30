@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Activity, 
-  Users, 
   PhoneCall, 
   Building2, 
-  Sparkles, 
   RefreshCw, 
   CheckCircle2, 
   ArrowLeft,

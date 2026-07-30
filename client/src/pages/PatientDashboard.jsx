@@ -14,7 +14,6 @@ import {
   Sparkles,
   ShieldCheck,
   AlertCircle,
-  TrendingUp,
   ChevronRight
 } from 'lucide-react';
 import queueApi from '../api/queueApi';
