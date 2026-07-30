@@ -1,15 +1,29 @@
 const mongoose = require("mongoose");
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+let isConnected = false;
 
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+const connectDB = async () => {
+  const mongoUri = process.env.MONGO_URI;
+  if (!mongoUri) {
+    console.warn("⚠️ MONGO_URI is not defined. Initializing system with Stateful In-Memory Storage Mode.");
+    return false;
+  }
+
+  try {
+    const conn = await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 3000,
+    });
+
+    isConnected = true;
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    return true;
   } catch (error) {
-    console.error("MongoDB Connection Error:");
-    console.error(error.message);
-    process.exit(1);
+    console.warn(`⚠️ MongoDB Connection Failed (${error.message}). Falling back to Stateful In-Memory Storage Mode.`);
+    isConnected = false;
+    return false;
   }
 };
 
-module.exports = connectDB;
+const getIsConnected = () => isConnected;
+
+module.exports = { connectDB, getIsConnected };
