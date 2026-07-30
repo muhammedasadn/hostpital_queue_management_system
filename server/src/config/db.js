@@ -1,26 +1,27 @@
 const mongoose = require("mongoose");
+const seedDatabase = require("./seed");
 
 let isConnected = false;
 
 const connectDB = async () => {
-  const mongoUri = process.env.MONGO_URI;
-  if (!mongoUri) {
-    console.warn("⚠️ MONGO_URI is not defined. Initializing system with Stateful In-Memory Storage Mode.");
-    return false;
-  }
+  const mongoUri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/hospital_queue";
 
   try {
     const conn = await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 5000,
     });
 
     isConnected = true;
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(`✅ MongoDB Connected Successfully: ${conn.connection.host}`);
+    
+    // Seed default OPD queues and doctor counters
+    await seedDatabase();
+
     return true;
   } catch (error) {
-    console.warn(`⚠️ MongoDB Connection Failed (${error.message}). Falling back to Stateful In-Memory Storage Mode.`);
+    console.error(`❌ MongoDB Connection Error: ${error.message}`);
     isConnected = false;
-    return false;
+    throw error;
   }
 };
 

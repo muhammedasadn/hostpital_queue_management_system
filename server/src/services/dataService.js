@@ -1,235 +1,155 @@
-const { getIsConnected } = require('../config/db');
-const { QueueModel, QueueClass } = require('../models/Queue');
-const { CounterModel, CounterClass } = require('../models/Counter');
+const { QueueModel } = require('../models/Queue');
+const { CounterModel } = require('../models/Counter');
 const TokenModel = require('../models/Token');
 const tokenService = require('./tokenService');
-
-// Stateful In-Memory Fallback Store
-const initialDepartments = ['General', 'Cardiology', 'Neurology', 'Orthopedics'];
-const memoryStore = {
-  queues: initialDepartments.map(dept => new QueueClass(dept)),
-  counters: [
-    new CounterClass(1, 'General', 'Dr. Sarah Jenkins'),
-    new CounterClass(2, 'Cardiology', 'Dr. Michael Chen'),
-    new CounterClass(3, 'Neurology', 'Dr. Elena Rostova'),
-    new CounterClass(4, 'Orthopedics', 'Dr. James Wilson')
-  ],
-  tokens: []
-};
+const seedDatabase = require('../config/seed');
 
 const dataService = {
-  // GET ALL QUEUES
+  // GET ALL QUEUES WITH ACTIVE TOKENS FROM MONGODB
   getQueues: async () => {
-    if (getIsConnected()) {
-      try {
-        const mongoQueues = await QueueModel.find().lean();
-        const mongoTokens = await TokenModel.find({ status: { $ne: 'completed' } }).lean();
+    // Ensure queues exist in database
+    await seedDatabase();
+    
+    const dbQueues = await QueueModel.find().lean();
+    const activeTokens = await TokenModel.find({ status: { $in: ['waiting', 'called'] } }).sort({ sequenceNumber: 1 }).lean();
 
-        return initialDepartments.map(dept => {
-          const deptTokens = mongoTokens.filter(t => t.department === dept);
-          const queueDoc = mongoQueues.find(q => q.department === dept);
-          return {
-            _id: queueDoc ? queueDoc._id : dept.toLowerCase(),
-            department: dept,
-            tokens: deptTokens,
-            avgWaitTime: queueDoc ? queueDoc.avgWaitTime : 10,
-            createdAt: queueDoc ? queueDoc.createdAt : new Date()
-          };
-        });
-      } catch (err) {
-        console.error('MongoDB Error fetching queues, falling back to memory:', err.message);
-      }
-    }
-
-    return memoryStore.queues;
+    return dbQueues.map(queue => {
+      const departmentTokens = activeTokens.filter(t => t.department.toLowerCase() === queue.department.toLowerCase());
+      return {
+        _id: queue._id,
+        department: queue.department,
+        tokens: departmentTokens.map((t, idx) => ({ ...t, position: idx + 1 })),
+        avgWaitTime: queue.avgWaitTime || 10,
+        createdAt: queue.createdAt || new Date()
+      };
+    });
   },
 
-  // GET ALL COUNTERS
+  // GET ALL DOCTOR COUNTERS FROM MONGODB
   getCounters: async () => {
-    if (getIsConnected()) {
-      try {
-        const dbCounters = await CounterModel.find().lean();
-        if (dbCounters.length > 0) return dbCounters;
-      } catch (err) {
-        console.error('MongoDB Error fetching counters, falling back to memory:', err.message);
-      }
-    }
-
-    return memoryStore.counters;
+    await seedDatabase();
+    return await CounterModel.find().sort({ counterNumber: 1 }).lean();
   },
 
-  // BOOK TOKEN
+  // BOOK A NEW PATIENT TOKEN IN MONGODB
   bookToken: async (patientName, department, phoneNumber = '') => {
     const formattedTokenNumber = tokenService.generateTokenCode(department);
     const tokenId = tokenService.generateSecureUUID();
+    const nextSeq = tokenService.getNextSequence();
 
-    let tokenObj = {
-      _id: tokenId,
+    const newToken = new TokenModel({
       tokenId: tokenId,
       tokenNumber: formattedTokenNumber,
-      sequenceNumber: tokenService.getNextSequence(),
+      sequenceNumber: nextSeq,
       patientName,
       department,
       phoneNumber,
       status: 'waiting',
       counterId: null,
-      position: 1,
       bookedAt: new Date()
-    };
+    });
 
-    if (getIsConnected()) {
-      try {
-        const createdToken = await TokenModel.create(tokenObj);
-        const waitingCount = await TokenModel.countDocuments({ department, status: 'waiting' });
-        tokenObj.position = waitingCount;
-        return createdToken.toObject();
-      } catch (err) {
-        console.error('MongoDB Error saving token, using memory store:', err.message);
-      }
-    }
+    const savedToken = await newToken.save();
 
-    // In-memory store logic
-    let queue = memoryStore.queues.find(q => q.department.toLowerCase() === department.toLowerCase());
-    if (!queue) {
-      queue = new QueueClass(department);
-      memoryStore.queues.push(queue);
-    }
+    // Calculate position
+    const waitingBefore = await TokenModel.countDocuments({
+      department: department,
+      status: 'waiting',
+      sequenceNumber: { $lt: nextSeq }
+    });
 
-    tokenObj.position = queue.tokens.filter(t => t.status === 'waiting').length + 1;
-    queue.addToken(tokenObj);
-    memoryStore.tokens.push(tokenObj);
+    const tokenObj = savedToken.toObject();
+    tokenObj.position = waitingBefore + 1;
+    tokenObj._id = savedToken.tokenId; // Provide clean _id alias for frontend
 
     return tokenObj;
   },
 
-  // GET SINGLE TOKEN STATUS
+  // GET TOKEN STATUS FROM MONGODB
   getTokenStatus: async (tokenId) => {
-    if (getIsConnected()) {
-      try {
-        const mongoToken = await TokenModel.findOne({
-          $or: [{ tokenId: tokenId }, { _id: tokenId }, { tokenNumber: tokenId }]
-        }).lean();
+    const token = await TokenModel.findOne({
+      $or: [{ tokenId: tokenId }, { tokenNumber: tokenId }]
+    }).lean();
 
-        if (mongoToken) {
-          const waitingBefore = await TokenModel.countDocuments({
-            department: mongoToken.department,
-            status: 'waiting',
-            sequenceNumber: { $lt: mongoToken.sequenceNumber }
-          });
-          mongoToken.position = waitingBefore + 1;
-          return mongoToken;
-        }
-      } catch (err) {
-        console.error('MongoDB Error fetching token status:', err.message);
-      }
+    if (!token) return null;
+
+    if (token.status === 'waiting') {
+      const waitingBefore = await TokenModel.countDocuments({
+        department: token.department,
+        status: 'waiting',
+        sequenceNumber: { $lt: token.sequenceNumber }
+      });
+      token.position = waitingBefore + 1;
+    } else {
+      token.position = 0;
     }
 
-    // Memory Store lookup
-    for (let queue of memoryStore.queues) {
-      const token = queue.tokens.find(t => t._id === tokenId || t.tokenId === tokenId || t.tokenNumber === tokenId);
-      if (token) {
-        const waitingTokens = queue.tokens.filter(t => t.status === 'waiting');
-        token.position = waitingTokens.findIndex(t => t._id === token._id) + 1;
-        return token;
-      }
-    }
-
-    return null;
+    token._id = token.tokenId;
+    return token;
   },
 
-  // CALL NEXT TOKEN
+  // CALL NEXT TOKEN FOR DOCTOR COUNTER IN MONGODB
   callNextToken: async (counterId) => {
-    if (getIsConnected()) {
-      try {
-        const counter = await CounterModel.findOne({ counterId }).lean();
-        if (counter) {
-          const nextToken = await TokenModel.findOneAndUpdate(
-            { department: counter.department, status: 'waiting' },
-            { status: 'called', counterId: counter.counterId, calledAt: new Date() },
-            { sort: { sequenceNumber: 1 }, new: true }
-          ).lean();
+    const counter = await CounterModel.findOne({
+      $or: [{ counterId: counterId }, { _id: counterId }]
+    });
 
-          if (nextToken) {
-            await CounterModel.findOneAndUpdate(
-              { counterId },
-              { currentToken: nextToken, status: 'active' }
-            );
-            return { nextToken, counter };
-          }
-        }
-      } catch (err) {
-        console.error('MongoDB Error calling next token:', err.message);
-      }
-    }
-
-    // Memory Store fallback
-    const counter = memoryStore.counters.find(c => c._id === counterId || c.counterId === counterId);
     if (!counter) return null;
 
-    const queue = memoryStore.queues.find(q => q.department.toLowerCase() === counter.department.toLowerCase());
-    if (queue) {
-      const waitingTokens = queue.tokens.filter(t => t.status === 'waiting');
-      if (waitingTokens.length > 0) {
-        const nextToken = waitingTokens[0];
-        nextToken.status = 'called';
-        nextToken.counterId = counter._id;
-        nextToken.calledAt = new Date();
-        counter.setCurrentToken(nextToken);
-        return { nextToken, counter };
-      }
+    // Atomically find earliest waiting token for this department
+    const nextToken = await TokenModel.findOneAndUpdate(
+      { department: counter.department, status: 'waiting' },
+      { status: 'called', counterId: counter.counterId, calledAt: new Date() },
+      { sort: { sequenceNumber: 1 }, new: true }
+    );
+
+    if (nextToken) {
+      const nextTokenObj = nextToken.toObject();
+      nextTokenObj._id = nextTokenObj.tokenId;
+
+      counter.currentToken = nextTokenObj;
+      counter.status = 'active';
+      await counter.save();
+
+      return { nextToken: nextTokenObj, counter: counter.toObject() };
     }
 
-    return { nextToken: null, counter };
+    // No waiting tokens left for this department
+    return { nextToken: null, counter: counter.toObject() };
   },
 
-  // COMPLETE TOKEN
+  // COMPLETE TOKEN IN MONGODB
   completeToken: async (counterId, tokenId) => {
-    if (getIsConnected()) {
-      try {
-        await TokenModel.findOneAndUpdate(
-          { $or: [{ tokenId }, { _id: tokenId }] },
-          { status: 'completed', completedAt: new Date() }
-        );
-        await CounterModel.findOneAndUpdate(
-          { counterId },
-          { currentToken: null, status: 'idle' }
-        );
-      } catch (err) {
-        console.error('MongoDB Error completing token:', err.message);
-      }
-    }
+    await TokenModel.findOneAndUpdate(
+      { $or: [{ tokenId: tokenId }, { tokenNumber: tokenId }] },
+      { status: 'completed', completedAt: new Date() }
+    );
 
-    const counter = memoryStore.counters.find(c => c._id === counterId || c.counterId === counterId);
+    const counter = await CounterModel.findOne({
+      $or: [{ counterId: counterId }, { _id: counterId }]
+    });
+
     if (counter) {
-      if (counter.currentToken) {
-        counter.currentToken.status = 'completed';
-      }
-      counter.clearCurrentToken();
-    }
-
-    for (let queue of memoryStore.queues) {
-      queue.removeToken(tokenId);
+      counter.currentToken = null;
+      counter.status = 'idle';
+      await counter.save();
     }
 
     return true;
   },
 
-  // RESET ALL QUEUES
+  // RESET ALL QUEUES IN MONGODB
   resetQueues: async () => {
     tokenService.resetSequence();
+    
+    // Wipe tokens collection
+    await TokenModel.deleteMany({});
 
-    if (getIsConnected()) {
-      try {
-        await TokenModel.deleteMany({});
-        await CounterModel.updateMany({}, { currentToken: null, status: 'idle' });
-      } catch (err) {
-        console.error('MongoDB Error resetting queues:', err.message);
-      }
-    }
+    // Reset counters to idle
+    await CounterModel.updateMany({}, { currentToken: null, status: 'idle' });
 
-    memoryStore.queues = initialDepartments.map(dept => new QueueClass(dept));
-    memoryStore.counters.forEach(c => c.clearCurrentToken());
-    memoryStore.tokens = [];
+    // Re-seed default queues if missing
+    await seedDatabase();
 
     return true;
   }
