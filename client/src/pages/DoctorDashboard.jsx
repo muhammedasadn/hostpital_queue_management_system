@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Stethoscope,
+  Users,
+  Ticket,
+  Activity,
+  Clock,
+  Megaphone,
+  LogOut,
+  CheckCircle,
+  Building2,
+  ChevronRight,
+  Sparkles,
+  Volume2
+} from 'lucide-react';
 import queueApi from '../api/queueApi';
 import socket from '../socket';
 import '../styles/DoctorDashboard.css';
@@ -9,7 +23,8 @@ function DoctorDashboard() {
   const [queues, setQueues] = useState([]);
   const [counters, setCounters] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDept, setSelectedDept] = useState(null);
+  const [selectedDept, setSelectedDept] = useState('ALL');
+  const [calledAlert, setCalledAlert] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -21,6 +36,8 @@ function DoctorDashboard() {
 
     socket.on('tokenCalled', (data) => {
       console.log('Token called:', data);
+      setCalledAlert(`Token #${data.tokenNumber} called for ${data.patientName} (${data.department})`);
+      setTimeout(() => setCalledAlert(null), 4000);
       fetchData();
     });
 
@@ -36,8 +53,8 @@ function DoctorDashboard() {
         queueApi.getQueues(),
         queueApi.getCounterStatus()
       ]);
-      setQueues(queuesData);
-      setCounters(countersData);
+      setQueues(Array.isArray(queuesData) ? queuesData : []);
+      setCounters(Array.isArray(countersData) ? countersData : []);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -58,205 +75,249 @@ function DoctorDashboard() {
     navigate('/');
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  const filteredQueues = selectedDept === 'ALL' 
+    ? queues 
+    : queues.filter(q => q._id === selectedDept || q.department === selectedDept);
+
+  const totalWaiting = queues.reduce((sum, q) => sum + (q.tokens?.length || 0), 0);
+  const activeCountersCount = counters.filter((c) => c.currentToken).length;
+
+  if (loading) {
+    return (
+      <div className="dashboard-loading">
+        <Activity className="loading-spinner" size={36} />
+        <p>Loading CareQueue Doctor Workspace...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="doctor-dashboard">
-      {/* Header */}
-      <header className="doctor-header">
-        <div className="header-content">
-          <div className="header-left">
-            <h1>👨‍⚕️ Doctor / Admin Portal</h1>
-            <p>Queue Management & Patient Flow Control</p>
+    <div className="doctor-dashboard-layout">
+      {/* Called Patient Toast Banner */}
+      {calledAlert && (
+        <div className="called-toast-banner">
+          <Volume2 size={20} className="toast-icon" />
+          <span>{calledAlert}</span>
+        </div>
+      )}
+
+      {/* Doctor Header */}
+      <header className="doctor-header-bar">
+        <div className="header-inner">
+          <div className="header-brand-title">
+            <div className="portal-icon-badge">
+              <Stethoscope size={24} />
+            </div>
+            <div>
+              <h1>Doctor & Staff Dispatch Portal</h1>
+              <p>Real-Time Patient Flow Management • Counter Dispatch Console</p>
+            </div>
           </div>
-          <div className="header-right">
-            <span className="user-role">Doctor</span>
-            <button className="logout-btn" onClick={handleLogout}>
-              ← Logout
+          <div className="header-actions">
+            <div className="doctor-profile-chip">
+              <span className="online-indicator"></span>
+              <span className="doc-role">On-Duty Staff</span>
+            </div>
+            <button className="btn-logout" onClick={handleLogout}>
+              <LogOut size={16} />
+              <span>Exit Portal</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Dashboard Grid */}
-      <div className="dashboard-grid">
-        {/* Left Sidebar - Queue Overview */}
-        <aside className="sidebar">
-          <div className="sidebar-section">
-            <h3>📊 Queue Overview</h3>
-            <div className="queue-overview">
-              {queues.map((queue) => (
-                <div
-                  key={queue._id}
-                  className={`queue-badge ${selectedDept === queue._id ? 'active' : ''}`}
-                  onClick={() => setSelectedDept(queue._id)}
+      {/* Main Container */}
+      <div className="doctor-content-container">
+        {/* Quick Stats Grid */}
+        <section className="stats-summary-grid">
+          <div className="stat-card glass-card">
+            <div className="stat-icon-wrapper blue">
+              <Users size={24} />
+            </div>
+            <div className="stat-details">
+              <span className="stat-label">Total Waiting Patients</span>
+              <h3 className="stat-number">{totalWaiting}</h3>
+            </div>
+          </div>
+
+          <div className="stat-card glass-card">
+            <div className="stat-icon-wrapper teal">
+              <Building2 size={24} />
+            </div>
+            <div className="stat-details">
+              <span className="stat-label">Active Departments</span>
+              <h3 className="stat-number">{queues.length}</h3>
+            </div>
+          </div>
+
+          <div className="stat-card glass-card">
+            <div className="stat-icon-wrapper green">
+              <Activity size={24} />
+            </div>
+            <div className="stat-details">
+              <span className="stat-label">Counters Serving</span>
+              <h3 className="stat-number">{activeCountersCount} / {counters.length}</h3>
+            </div>
+          </div>
+
+          <div className="stat-card glass-card">
+            <div className="stat-icon-wrapper amber">
+              <Clock size={24} />
+            </div>
+            <div className="stat-details">
+              <span className="stat-label">Estimated Wait</span>
+              <h3 className="stat-number">~15 mins</h3>
+            </div>
+          </div>
+        </section>
+
+        {/* Dashboard Main Workspace Layout */}
+        <div className="workspace-columns">
+          {/* Main Queue & Counter Management */}
+          <main className="primary-workspace">
+            {/* Department Quick Filter */}
+            <div className="filter-pill-bar glass-card">
+              <span className="filter-title">Filter Department:</span>
+              <button
+                className={`filter-chip ${selectedDept === 'ALL' ? 'active' : ''}`}
+                onClick={() => setSelectedDept('ALL')}
+              >
+                All ({queues.length})
+              </button>
+              {queues.map((q) => (
+                <button
+                  key={q._id}
+                  className={`filter-chip ${selectedDept === q._id ? 'active' : ''}`}
+                  onClick={() => setSelectedDept(q._id)}
                 >
-                  <div className="badge-name">{queue.department}</div>
-                  <div className="badge-count">{queue.tokens.length} waiting</div>
-                </div>
+                  {q.department} ({q.tokens?.length || 0})
+                </button>
               ))}
             </div>
-          </div>
 
-          <div className="sidebar-section">
-            <h3>⚙️ Counters</h3>
-            <div className="counters-list">
-              {counters.map((counter) => (
-                <div key={counter._id} className="counter-item">
-                  <div className="counter-info">
-                    <span className="counter-name">Counter {counter.counterNumber}</span>
-                    <span className="counter-dept">{counter.department}</span>
-                  </div>
-                  {counter.currentToken ? (
-                    <div className="counter-token">
-                      Token #{counter.currentToken.tokenNumber}
+            {/* Counter Control Section */}
+            <section className="section-block">
+              <div className="section-title-row">
+                <h2>
+                  <Megaphone size={20} />
+                  <span>Dispatch Counters & Call Control</span>
+                </h2>
+                <span className="badge-count-pill">{counters.length} Counters Configured</span>
+              </div>
+
+              <div className="counters-card-grid">
+                {counters.map((counter) => (
+                  <div key={counter._id} className={`counter-panel-card glass-card ${counter.currentToken ? 'serving-active' : ''}`}>
+                    <div className="counter-card-header">
+                      <div className="counter-num-badge">Counter {counter.counterNumber}</div>
+                      <span className="counter-dept-tag">{counter.department}</span>
                     </div>
-                  ) : (
-                    <div className="counter-idle">Idle</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </aside>
 
-        {/* Main Content */}
-        <main className="main-content">
-          {/* Statistics */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">👥</div>
-              <div className="stat-data">
-                <h4>Total Waiting</h4>
-                <p className="stat-value">
-                  {queues.reduce((sum, q) => sum + q.tokens.length, 0)}
-                </p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">🎫</div>
-              <div className="stat-data">
-                <h4>Departments</h4>
-                <p className="stat-value">{queues.length}</p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">🔄</div>
-              <div className="stat-data">
-                <h4>Active Counters</h4>
-                <p className="stat-value">
-                  {counters.filter((c) => c.currentToken).length} / {counters.length}
-                </p>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">⏱️</div>
-              <div className="stat-data">
-                <h4>Avg Wait Time</h4>
-                <p className="stat-value">15m</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Queue Details */}
-          <section className="queue-section">
-            <h2>🏥 Department Queues</h2>
-            <div className="queues-container">
-              {queues.map((queue) => (
-                <div key={queue._id} className="queue-card">
-                  <div className="queue-header">
-                    <h3>{queue.department}</h3>
-                    <span className="queue-count">{queue.tokens.length} patients</span>
-                  </div>
-
-                  {queue.tokens.length > 0 ? (
-                    <>
-                      <div className="queue-list">
-                        <div className="queue-list-header">
-                          <span>Position</span>
-                          <span>Token #</span>
-                          <span>Patient Name</span>
-                          <span>Status</span>
+                    {counter.currentToken ? (
+                      <div className="counter-active-token">
+                        <div className="pulse-serving-indicator">
+                          <span className="dot"></span>
+                          <span>Currently Serving</span>
                         </div>
-                        {queue.tokens.slice(0, 5).map((token, idx) => (
-                          <div key={token._id} className="queue-row">
-                            <span className="position">#{idx + 1}</span>
-                            <span className="token-num">{token.tokenNumber}</span>
-                            <span className="patient-name">{token.patientName}</span>
-                            <span className={`status status-${token.status}`}>
-                              {token.status}
-                            </span>
-                          </div>
-                        ))}
+                        <h3 className="token-huge-num">#{counter.currentToken.tokenNumber}</h3>
+                        <p className="patient-name-display">{counter.currentToken.patientName}</p>
                       </div>
+                    ) : (
+                      <div className="counter-idle-state">
+                        <CheckCircle size={28} className="idle-icon" />
+                        <p className="idle-text">Counter Available</p>
+                        <span className="idle-subtext">Click below to dispatch next patient</span>
+                      </div>
+                    )}
 
-                      {queue.tokens.length > 5 && (
-                        <div className="more-patients">
-                          +{queue.tokens.length - 5} more patients
-                        </div>
-                      )}
+                    <button
+                      className="btn-call-next-huge"
+                      onClick={() => handleCallNextToken(counter._id)}
+                    >
+                      <Megaphone size={18} />
+                      <span>Call Next Patient</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
 
+            {/* Queues Detail Section */}
+            <section className="section-block">
+              <div className="section-title-row">
+                <h2>
+                  <Ticket size={20} />
+                  <span>Live Department Patient Queues</span>
+                </h2>
+              </div>
+
+              <div className="department-queues-list">
+                {filteredQueues.map((queue) => (
+                  <div key={queue._id} className="dept-queue-card glass-card">
+                    <div className="dept-card-header">
+                      <div>
+                        <h3>{queue.department} Department</h3>
+                        <span className="queue-wait-subtitle">
+                          {queue.tokens?.length || 0} patient(s) in line
+                        </span>
+                      </div>
                       <button
-                        className="btn-call-next"
+                        className="btn-call-dept-direct"
                         onClick={() => {
-                          const counter = counters.find(
-                            (c) => c.department === queue.department
-                          );
+                          const counter = counters.find((c) => c.department === queue.department);
                           if (counter) handleCallNextToken(counter._id);
                         }}
                       >
-                        📢 Call Next Patient
+                        <Megaphone size={16} />
+                        <span>Dispatch Next</span>
                       </button>
-                    </>
-                  ) : (
-                    <div className="empty-queue">
-                      <p>✅ No patients waiting</p>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
 
-          {/* Counter Management */}
-          <section className="counter-section">
-            <h2>🔢 Counter Management</h2>
-            <div className="counters-grid">
-              {counters.map((counter) => (
-                <div key={counter._id} className="counter-card">
-                  <div className="counter-header">
-                    <h3>Counter {counter.counterNumber}</h3>
-                    <span className="department-badge">{counter.department}</span>
-                  </div>
-
-                  {counter.currentToken ? (
-                    <div className="current-token">
-                      <p className="label">Currently Serving:</p>
-                      <div className="token-display">
-                        <h4>Token #{counter.currentToken.tokenNumber}</h4>
-                        <p>{counter.currentToken.patientName}</p>
+                    {queue.tokens && queue.tokens.length > 0 ? (
+                      <div className="queue-table-wrapper">
+                        <table className="queue-table">
+                          <thead>
+                            <tr>
+                              <th>Queue Pos</th>
+                              <th>Token #</th>
+                              <th>Patient Name</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {queue.tokens.map((token, idx) => (
+                              <tr key={token._id || idx} className={idx === 0 ? 'next-up-row' : ''}>
+                                <td className="pos-col">
+                                  <span className="pos-badge">#{idx + 1}</span>
+                                </td>
+                                <td className="token-col">{token.tokenNumber}</td>
+                                <td className="name-col">{token.patientName}</td>
+                                <td className="status-col">
+                                  <span className={`status-badge ${token.status}`}>
+                                    {token.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="counter-idle-state">
-                      <p>⚪ Idle</p>
-                    </div>
-                  )}
-
-                  <button
-                    className="btn-call-next btn-full"
-                    onClick={() => handleCallNextToken(counter._id)}
-                  >
-                    Call Next Patient
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        </main>
+                    ) : (
+                      <div className="empty-queue-notice">
+                        <Sparkles size={24} className="empty-icon" />
+                        <p>No waiting patients in {queue.department} department.</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </main>
+        </div>
       </div>
     </div>
   );
 }
 
 export default DoctorDashboard;
+

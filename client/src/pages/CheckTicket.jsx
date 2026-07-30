@@ -1,5 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import jsQR from 'jsqr';
+import { 
+  Search, 
+  QrCode, 
+  Ticket as TicketIcon, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Clock, 
+  ArrowLeft, 
+  Sparkles, 
+  RefreshCw, 
+  Building2, 
+  User, 
+  Calendar,
+  Layers,
+  Bell
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import queueApi from '../api/queueApi';
 import socket from '../socket';
 import '../styles/CheckTicket.css';
@@ -27,7 +44,7 @@ function CheckTicket() {
   }, [ticket]);
 
   const handleSearch = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!tokenId.trim()) {
       setError('Please enter a token ID');
       return;
@@ -38,7 +55,7 @@ function CheckTicket() {
     setTicket(null);
 
     try {
-      const result = await queueApi.getTokenStatus(tokenId);
+      const result = await queueApi.getTokenStatus(tokenId.trim());
       setTicket(result);
     } catch (err) {
       setError('Token not found. Please check the ID and try again.');
@@ -59,24 +76,19 @@ function CheckTicket() {
       
       img.onload = async () => {
         try {
-          // Create canvas and context
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
           canvas.height = img.height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0);
 
-          // Get image data
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          
-          // Decode QR code
           const decodedQR = jsQR(imageData.data, imageData.width, imageData.height);
 
           if (decodedQR && decodedQR.data) {
             const scannedTokenId = decodedQR.data;
             setTokenId(scannedTokenId);
             
-            // Auto-search for the token
             setLoading(true);
             try {
               const result = await queueApi.getTokenStatus(scannedTokenId);
@@ -111,146 +123,215 @@ function CheckTicket() {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusBadge = (status) => {
     switch (status) {
       case 'waiting':
-        return '#FF9800';
+        return (
+          <div className="status-badge-glass waiting">
+            <Clock size={16} />
+            <span>Waiting in Queue</span>
+          </div>
+        );
       case 'called':
-        return '#2196F3';
+        return (
+          <div className="status-badge-glass called animate-pulse-glow">
+            <Bell size={16} />
+            <span>Called to Counter!</span>
+          </div>
+        );
       case 'completed':
-        return '#4CAF50';
+        return (
+          <div className="status-badge-glass completed">
+            <CheckCircle2 size={16} />
+            <span>Consultation Completed</span>
+          </div>
+        );
       case 'cancelled':
-        return '#f44336';
+        return (
+          <div className="status-badge-glass cancelled">
+            <AlertTriangle size={16} />
+            <span>Cancelled</span>
+          </div>
+        );
       default:
-        return '#999';
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'waiting':
-        return 'Waiting in Queue';
-      case 'called':
-        return 'Called to Counter';
-      case 'completed':
-        return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
+        return (
+          <div className="status-badge-glass default">
+            <span>{status}</span>
+          </div>
+        );
     }
   };
 
   return (
-    <div className="check-ticket">
-      <div className="check-ticket-header">
-        <h1>Check Your Ticket Status</h1>
-        <p>Enter your token ID or scan the QR code to view your ticket information</p>
+    <div className="check-ticket-page">
+      <div className="check-ticket-container">
+        
+        {/* Page Top Header */}
+        <div className="check-ticket-topbar">
+          <Link to="/" className="btn-back-link">
+            <ArrowLeft size={18} /> Back to Gateway
+          </Link>
+          <div className="header-badge-tag">
+            <Sparkles size={14} /> Live Verification
+          </div>
+        </div>
+
+        <div className="check-hero-header">
+          <h1>Track Digital Voucher</h1>
+          <p>Scan your token QR code or enter your reference token ID to retrieve real-time status</p>
+        </div>
+
+        {/* Input & Search Glass Panel */}
+        <div className="search-glass-card glass-card">
+          <form onSubmit={handleSearch} className="search-form-modern">
+            <div className="search-field-wrapper">
+              <Search className="field-icon" size={20} />
+              <input
+                type="text"
+                placeholder="Enter Token ID (e.g., 0.18274619)"
+                value={tokenId}
+                onChange={(e) => setTokenId(e.target.value)}
+                className="modern-token-input"
+              />
+              <button type="submit" disabled={loading} className="modern-search-btn">
+                {loading ? <RefreshCw className="spin-icon" size={18} /> : 'Track Token'}
+              </button>
+            </div>
+
+            <div className="divider-glass">
+              <span>OR</span>
+            </div>
+
+            <div className="qr-scan-wrapper">
+              <label htmlFor="qr-file-input" className="qr-dropzone">
+                <QrCode size={28} className="qr-icon" />
+                <div className="dropzone-text">
+                  <span className="primary-text">
+                    {scanningQR ? 'Analyzing QR Code...' : 'Upload or Scan QR Code'}
+                  </span>
+                  <span className="sub-text">PNG, JPG, or Screenshots supported</span>
+                </div>
+              </label>
+              <input
+                ref={fileInputRef}
+                id="qr-file-input"
+                type="file"
+                accept="image/*"
+                onChange={handleQRScan}
+                disabled={scanningQR}
+                className="hidden-file-input"
+              />
+            </div>
+          </form>
+
+          {error && (
+            <div className="search-error-banner">
+              <AlertTriangle size={18} />
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Ticket Digital Pass Render */}
+        {ticket && (
+          <div className="ticket-voucher-wrapper fade-in">
+            <div className="digital-voucher-card glass-card">
+              
+              {/* Ticket Top Notch */}
+              <div className="voucher-header">
+                <div className="voucher-brand">
+                  <TicketIcon size={22} className="brand-icon" />
+                  <span>Hospital Digital Pass</span>
+                </div>
+                {getStatusBadge(ticket.status)}
+              </div>
+
+              {ticket.status === 'called' && (
+                <div className="urgent-call-alert">
+                  <Bell className="shake-icon" size={20} />
+                  <div>
+                    <strong>Your Turn Now!</strong>
+                    <p>Please proceed directly to the designated department counter.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Voucher Main Content */}
+              <div className="voucher-body">
+                <div className="token-hero-box">
+                  <span className="hero-label">Token Number</span>
+                  <div className="hero-number">{ticket.tokenNumber}</div>
+                </div>
+
+                <div className="voucher-details-grid">
+                  <div className="voucher-detail-item">
+                    <div className="detail-icon-wrap"><Building2 size={18} /></div>
+                    <div>
+                      <span className="detail-label">Department</span>
+                      <strong className="detail-val">{ticket.department}</strong>
+                    </div>
+                  </div>
+
+                  <div className="voucher-detail-item">
+                    <div className="detail-icon-wrap"><User size={18} /></div>
+                    <div>
+                      <span className="detail-label">Patient Name</span>
+                      <strong className="detail-val">{ticket.patientName}</strong>
+                    </div>
+                  </div>
+
+                  <div className="voucher-detail-item">
+                    <div className="detail-icon-wrap"><Layers size={18} /></div>
+                    <div>
+                      <span className="detail-label">Queue Position</span>
+                      <strong className="detail-val highlight">{ticket.position || 'Active'}</strong>
+                    </div>
+                  </div>
+
+                  <div className="voucher-detail-item">
+                    <div className="detail-icon-wrap"><Calendar size={18} /></div>
+                    <div>
+                      <span className="detail-label">Booked Date</span>
+                      <strong className="detail-val">
+                        {new Date(ticket.bookedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Voucher Card Footer */}
+              <div className="voucher-footer">
+                <div className="ticket-id-tag">Reference: {ticket._id}</div>
+                <button
+                  onClick={() => {
+                    setTicket(null);
+                    setTokenId('');
+                  }}
+                  className="btn-reset-ticket"
+                >
+                  <RefreshCw size={16} /> Check Another Pass
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {!ticket && !error && !loading && (
+          <div className="check-empty-state glass-card">
+            <div className="empty-qr-placeholder">
+              <QrCode size={48} />
+            </div>
+            <h3>Ready to Verify</h3>
+            <p>Your ticket details and live queue status will be rendered here once scanned.</p>
+          </div>
+        )}
+
       </div>
-
-      <form onSubmit={handleSearch} className="search-form">
-        <div className="search-input-group">
-          <input
-            type="text"
-            placeholder="Enter Token ID (e.g., 0.123456789)"
-            value={tokenId}
-            onChange={(e) => setTokenId(e.target.value)}
-            className="token-input"
-          />
-          <button type="submit" disabled={loading} className="search-btn">
-            {loading ? 'Searching...' : 'Search'}
-          </button>
-        </div>
-
-        <div className="or-divider">OR</div>
-
-        <div className="qr-upload">
-          <label htmlFor="qr-file" className="qr-upload-label">
-            {scanningQR ? '⏳ Scanning QR Code...' : '📱 Scan QR Code'}
-          </label>
-          <input
-            ref={fileInputRef}
-            id="qr-file"
-            type="file"
-            accept="image/*"
-            onChange={handleQRScan}
-            disabled={scanningQR}
-            className="qr-file-input"
-          />
-          <p className="qr-hint">Upload a photo of the QR code or take a screenshot</p>
-        </div>
-      </form>
-
-      {error && <div className="error-message">{error}</div>}
-
-      {ticket && (
-        <div className="ticket-display">
-          <div className="ticket-status-badge" style={{ borderColor: getStatusColor(ticket.status) }}>
-            <div
-              className="status-indicator"
-              style={{ backgroundColor: getStatusColor(ticket.status) }}
-            />
-            <span className="status-text">{getStatusText(ticket.status)}</span>
-          </div>
-
-          <div className="ticket-info-grid">
-            <div className="ticket-info-item">
-              <label>Token Number</label>
-              <div className="ticket-value large">{ticket.tokenNumber}</div>
-            </div>
-
-            <div className="ticket-info-item">
-              <label>Department</label>
-              <div className="ticket-value">{ticket.department}</div>
-            </div>
-
-            <div className="ticket-info-item">
-              <label>Patient Name</label>
-              <div className="ticket-value">{ticket.patientName}</div>
-            </div>
-
-            <div className="ticket-info-item">
-              <label>Position in Queue</label>
-              <div className="ticket-value highlight">{ticket.position || 'N/A'}</div>
-            </div>
-
-            <div className="ticket-info-item">
-              <label>Booked At</label>
-              <div className="ticket-value">
-                {new Date(ticket.bookedAt).toLocaleString()}
-              </div>
-            </div>
-
-            {ticket.status === 'called' && (
-              <div className="ticket-info-item alert">
-                <label>⚠️ Alert</label>
-                <div className="alert-text">Your token has been called! Please proceed to the counter.</div>
-              </div>
-            )}
-          </div>
-
-          <div className="ticket-actions">
-            <button
-              onClick={() => {
-                setTicket(null);
-                setTokenId('');
-              }}
-              className="reset-btn"
-            >
-              Check Another Token
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!ticket && !error && !loading && (
-        <div className="empty-state">
-          <div className="empty-icon">🎫</div>
-          <p>Enter a token ID or scan a QR code above to check your ticket status</p>
-        </div>
-      )}
     </div>
   );
 }
 
 export default CheckTicket;
+
