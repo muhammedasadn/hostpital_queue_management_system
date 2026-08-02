@@ -5,30 +5,52 @@ const TokenModel = require('../models/Token');
 const tokenService = require('./tokenService');
 const seedDatabase = require('../config/seed');
 
+// Patient Data Anonymization Helper (HIPAA Privacy Compliance)
+const anonymizeToken = (tokenObj) => {
+  if (!tokenObj) return null;
+  const nameParts = (tokenObj.patientName || '').trim().split(' ');
+  const maskedName = nameParts.map(p => p ? `${p[0]}***` : '').join(' ');
+  const phone = tokenObj.phoneNumber || '';
+  const maskedPhone = phone.length > 4 ? `${phone.slice(0, 3)}****${phone.slice(-2)}` : '';
+
+  return {
+    ...tokenObj,
+    patientName: maskedName || 'Patient',
+    phoneNumber: maskedPhone
+  };
+};
+
 const dataService = {
-  // GET ALL QUEUES WITH ACTIVE TOKENS FROM MONGODB
+  // GET ALL QUEUES WITH ANONYMIZED ACTIVE TOKENS (PUBLIC VIEW)
   getQueues: async () => {
     const dbQueues = await QueueModel.find().lean();
     const activeTokens = await TokenModel.find({ status: { $in: ['waiting', 'called'] } }).sort({ sequenceNumber: 1 }).lean();
 
     return dbQueues.map(queue => {
-      const departmentTokens = activeTokens.filter(t => t.department.toLowerCase() === queue.department.toLowerCase());
+      const departmentTokens = activeTokens
+        .filter(t => t.department.toLowerCase() === queue.department.toLowerCase())
+        .map((t, idx) => anonymizeToken({ ...t, position: idx + 1 }));
+
       return {
         _id: queue._id,
         department: queue.department,
-        tokens: departmentTokens.map((t, idx) => ({ ...t, position: idx + 1 })),
+        tokens: departmentTokens,
         avgWaitTime: queue.avgWaitTime || 10,
         createdAt: queue.createdAt || new Date()
       };
     });
   },
 
-  // GET ALL DOCTOR COUNTERS FROM MONGODB
+  // GET ALL DOCTOR COUNTERS (PUBLIC ANONYMIZED VIEW)
   getCounters: async () => {
-    return await CounterModel.find().sort({ counterNumber: 1 }).lean();
+    const counters = await CounterModel.find().sort({ counterNumber: 1 }).lean();
+    return counters.map(c => ({
+      ...c,
+      currentToken: c.currentToken ? anonymizeToken(c.currentToken) : null
+    }));
   },
 
-  // BOOK A NEW PATIENT TOKEN IN MONGODB
+  // BOOK A NEW PATIENT TOKEN
   bookToken: async (patientName, department, phoneNumber = '') => {
     const formattedTokenNumber = tokenService.generateTokenCode(department);
     const tokenId = tokenService.generateSecureUUID();
@@ -48,7 +70,6 @@ const dataService = {
 
     const savedToken = await newToken.save();
 
-    // Calculate position
     const waitingBefore = await TokenModel.countDocuments({
       department: department,
       status: 'waiting',
@@ -57,12 +78,12 @@ const dataService = {
 
     const tokenObj = savedToken.toObject();
     tokenObj.position = waitingBefore + 1;
-    tokenObj._id = savedToken.tokenId; // Clean alias for client
+    tokenObj._id = savedToken.tokenId;
 
     return tokenObj;
   },
 
-  // GET TOKEN STATUS FROM MONGODB
+  // GET SINGLE TOKEN STATUS (ANONYMIZED FOR PUBLIC ACCESS)
   getTokenStatus: async (tokenId) => {
     const isObjectId = mongoose.Types.ObjectId.isValid(tokenId);
     const query = isObjectId 
@@ -85,10 +106,10 @@ const dataService = {
     }
 
     token._id = token.tokenId;
-    return token;
+    return anonymizeToken(token);
   },
 
-  // CALL NEXT TOKEN FOR DOCTOR COUNTER IN MONGODB
+  // CALL NEXT TOKEN FOR DOCTOR COUNTER (RETURNS FULL PATIENT RECORD FOR AUTHENTICATED DOCTOR)
   callNextToken: async (counterId) => {
     const isObjectId = mongoose.Types.ObjectId.isValid(counterId);
     const counterQuery = isObjectId
@@ -99,7 +120,6 @@ const dataService = {
 
     if (!counter) return null;
 
-    // Atomically find earliest waiting token for this department
     const nextToken = await TokenModel.findOneAndUpdate(
       { department: counter.department, status: 'waiting' },
       { status: 'called', counterId: counter.counterId, calledAt: new Date() },
@@ -117,11 +137,10 @@ const dataService = {
       return { nextToken: nextTokenObj, counter: counter.toObject() };
     }
 
-    // No waiting tokens left for this department
     return { nextToken: null, counter: counter.toObject() };
   },
 
-  // COMPLETE TOKEN IN MONGODB
+  // COMPLETE TOKEN
   completeToken: async (counterId, tokenId) => {
     const isTokenObjectId = mongoose.Types.ObjectId.isValid(tokenId);
     const tokenQuery = isTokenObjectId
@@ -153,13 +172,8 @@ const dataService = {
   resetQueues: async () => {
     tokenService.resetSequence();
     
-    // Wipe tokens collection
     await TokenModel.deleteMany({});
-
-    // Reset counters to idle
     await CounterModel.updateMany({}, { currentToken: null, status: 'idle' });
-
-    // Re-seed default queues if missing
     await seedDatabase();
 
     return true;

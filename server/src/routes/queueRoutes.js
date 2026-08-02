@@ -1,21 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const queueController = require('../controllers/queueController');
+const { verifyToken, requireRole } = require('../middleware/auth');
 
-// Queue & Counter Read Routes
+// Public Queue & Counter Read Routes (Patient Portal & Public Displays)
 router.get('/queues', queueController.getQueues);
 router.get('/counters', queueController.getCounters);
-router.get('/stats', queueController.getStats);
 
-// Token Operations
+// Public Patient Token Operations
 router.post('/queue/book', queueController.bookToken);
 router.get('/token/:tokenId', queueController.getTokenStatus);
 
-// Doctor Counter Dispatch Operations
-router.post('/counter/next', queueController.callNextToken);
-router.post('/counter/complete', queueController.completeToken);
+// Protected Doctor Counter Dispatch Operations (Doctor / Admin / Reception)
+router.post('/counter/next', verifyToken, requireRole('doctor', 'admin', 'reception'), queueController.callNextToken);
+router.post('/counter/complete', verifyToken, requireRole('doctor', 'admin', 'reception'), queueController.completeToken);
 
-// Admin Management Operations
-router.post('/queue/reset', queueController.resetQueues);
+// Protected Admin Operations
+router.get('/stats', verifyToken, requireRole('admin', 'doctor'), queueController.getStats);
+router.post('/queue/reset', verifyToken, requireRole('admin'), queueController.resetQueues);
 
 module.exports = router;

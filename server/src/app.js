@@ -9,18 +9,19 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// API Routes
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api', require('./routes/queueRoutes'));
 
-// Basic route
+// Basic Health Check Route
 app.get('/', (req, res) => {
-  res.json({ message: 'Hospital Queue Management System API' });
+  res.json({ message: 'Hospital CareQueue Enterprise API is Active' });
 });
 
-// Error handling middleware
+// Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  res.status(500).json({ error: 'Internal server error occurred.' });
 });
 
 module.exports = app;
