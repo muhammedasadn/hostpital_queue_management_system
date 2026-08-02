@@ -51,4 +51,8 @@ const TokenSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Performance Database Indexes
+TokenSchema.index({ department: 1, status: 1, sequenceNumber: 1 });
+TokenSchema.index({ tokenNumber: 1 });
+
 module.exports = mongoose.models.Token || mongoose.model('Token', TokenSchema);

@@ -8,8 +8,6 @@ const seedDatabase = require('../config/seed');
 const dataService = {
   // GET ALL QUEUES WITH ACTIVE TOKENS FROM MONGODB
   getQueues: async () => {
-    await seedDatabase();
-    
     const dbQueues = await QueueModel.find().lean();
     const activeTokens = await TokenModel.find({ status: { $in: ['waiting', 'called'] } }).sort({ sequenceNumber: 1 }).lean();
 
@@ -27,7 +25,6 @@ const dataService = {
 
   // GET ALL DOCTOR COUNTERS FROM MONGODB
   getCounters: async () => {
-    await seedDatabase();
     return await CounterModel.find().sort({ counterNumber: 1 }).lean();
   },
 
