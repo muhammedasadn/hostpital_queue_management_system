@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Activity, CalendarPlus, Search, ListFilter, ShieldCheck, Home, Stethoscope } from 'lucide-react';
+import { Activity, CalendarPlus, Search, ListFilter, ShieldCheck, Home, Stethoscope, LogIn, LogOut, User } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import RoleSelection from './pages/RoleSelection';
 import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
@@ -8,14 +10,14 @@ import PatientBooking from './pages/PatientBooking';
 import TokenStatus from './pages/TokenStatus';
 import AdminDashboard from './pages/AdminDashboard';
 import CheckTicket from './pages/CheckTicket';
+import Login from './pages/Login';
 import './App.css';
 
 function Navigation() {
   const location = useLocation();
+  const { user, logout } = useAuth();
 
-  // Hide global navigation on splash role selection page
   const hideNavigation = ['/'].includes(location.pathname);
-
   if (hideNavigation) return null;
 
   const isActive = (path) => location.pathname === path;
@@ -41,6 +43,7 @@ function Navigation() {
             <Home size={18} />
             <span>Dashboard</span>
           </Link>
+
           <Link
             to="/patient-booking"
             className={`nav-link ${isActive('/patient-booking') ? 'active' : ''}`}
@@ -48,6 +51,7 @@ function Navigation() {
             <CalendarPlus size={18} />
             <span>Book Token</span>
           </Link>
+
           <Link
             to="/check"
             className={`nav-link ${isActive('/check') ? 'active' : ''}`}
@@ -55,6 +59,7 @@ function Navigation() {
             <Search size={18} />
             <span>Check Ticket</span>
           </Link>
+
           <Link
             to="/status"
             className={`nav-link ${isActive('/status') ? 'active' : ''}`}
@@ -62,6 +67,7 @@ function Navigation() {
             <ListFilter size={18} />
             <span>Live Queues</span>
           </Link>
+
           <Link
             to="/doctor-dashboard"
             className={`nav-link doctor-pill ${isActive('/doctor-dashboard') ? 'active' : ''}`}
@@ -69,6 +75,7 @@ function Navigation() {
             <Stethoscope size={18} />
             <span>Doctor Portal</span>
           </Link>
+
           <Link
             to="/admin"
             className={`nav-link admin-pill ${isActive('/admin') ? 'active' : ''}`}
@@ -76,6 +83,40 @@ function Navigation() {
             <ShieldCheck size={18} />
             <span>Admin</span>
           </Link>
+
+          {user ? (
+            <button
+              onClick={logout}
+              className="nav-link"
+              style={{
+                border: 'none',
+                background: '#f1f5f9',
+                color: '#475569',
+                cursor: 'pointer',
+                borderRadius: '50px',
+                padding: '0.4rem 0.9rem',
+                fontWeight: 600
+              }}
+            >
+              <LogOut size={16} />
+              <span>Logout ({user.name.split(' ')[0]})</span>
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className={`nav-link ${isActive('/login') ? 'active' : ''}`}
+              style={{
+                background: '#eff6ff',
+                color: '#2563eb',
+                borderRadius: '50px',
+                padding: '0.4rem 0.9rem',
+                fontWeight: 600
+              }}
+            >
+              <LogIn size={16} />
+              <span>Staff Login</span>
+            </Link>
+          )}
         </div>
       </nav>
     </header>
@@ -84,29 +125,47 @@ function Navigation() {
 
 function App() {
   return (
-    <Router>
-      <div className="App">
-        <Navigation />
-        <main className="main-viewport">
-          <Routes>
-            {/* Role Selection */}
-            <Route path="/" element={<RoleSelection />} />
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <Navigation />
+          <main className="main-viewport">
+            <Routes>
+              {/* Role Selection */}
+              <Route path="/" element={<RoleSelection />} />
 
-            {/* Patient Routes */}
-            <Route path="/patient-dashboard" element={<PatientDashboard />} />
-            <Route path="/patient-booking" element={<PatientBooking />} />
-            <Route path="/check" element={<CheckTicket />} />
-            <Route path="/status" element={<TokenStatus />} />
+              {/* Public Patient Routes */}
+              <Route path="/patient-dashboard" element={<PatientDashboard />} />
+              <Route path="/patient-booking" element={<PatientBooking />} />
+              <Route path="/check" element={<CheckTicket />} />
+              <Route path="/status" element={<TokenStatus />} />
 
-            {/* Doctor/Admin Routes */}
-            <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+              {/* Staff Auth Route */}
+              <Route path="/login" element={<Login />} />
+
+              {/* Guarded Doctor/Admin Routes */}
+              <Route
+                path="/doctor-dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['doctor', 'admin', 'reception']}>
+                    <DoctorDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
 export default App;
-

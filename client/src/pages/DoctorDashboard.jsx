@@ -11,38 +11,46 @@ import {
   CheckCircle,
   Building2,
   Sparkles,
-  Volume2
+  Volume2,
+  CheckSquare,
+  ShieldCheck
 } from 'lucide-react';
 import queueApi from '../api/queueApi';
 import socket from '../socket';
+import { useAuth } from '../context/AuthContext';
 import '../styles/DoctorDashboard.css';
 
 function DoctorDashboard() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [queues, setQueues] = useState([]);
   const [counters, setCounters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [calledAlert, setCalledAlert] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   useEffect(() => {
     fetchData();
 
-    socket.on('tokenBooked', (data) => {
-      console.log('Token booked:', data);
+    socket.on('tokenBooked', () => {
       fetchData();
     });
 
     socket.on('tokenCalled', (data) => {
-      console.log('Token called:', data);
-      setCalledAlert(`Token #${data.tokenNumber} called for ${data.patientName} (${data.department})`);
+      setCalledAlert(`Token #${data.token?.tokenNumber || ''} called for ${data.token?.patientName || 'Patient'} (${data.counter?.department || ''})`);
       setTimeout(() => setCalledAlert(null), 4000);
+      fetchData();
+    });
+
+    socket.on('tokenCompleted', () => {
       fetchData();
     });
 
     return () => {
       socket.off('tokenBooked');
       socket.off('tokenCalled');
+      socket.off('tokenCompleted');
     };
   }, []);
 
@@ -63,15 +71,29 @@ function DoctorDashboard() {
 
   const handleCallNextToken = async (counterId) => {
     try {
+      setActionError(null);
       await queueApi.callNextToken(counterId);
       fetchData();
     } catch (error) {
-      console.error('Error calling next token:', error);
+      setActionError(typeof error === 'string' ? error : 'Failed to dispatch next token.');
+      setTimeout(() => setActionError(null), 4000);
+    }
+  };
+
+  const handleCompleteToken = async (counterId, tokenId) => {
+    try {
+      setActionError(null);
+      await queueApi.completeToken(counterId, tokenId);
+      fetchData();
+    } catch (error) {
+      setActionError(typeof error === 'string' ? error : 'Failed to mark token complete.');
+      setTimeout(() => setActionError(null), 4000);
     }
   };
 
   const handleLogout = () => {
-    navigate('/');
+    logout();
+    navigate('/login');
   };
 
   const filteredQueues = selectedDept === 'ALL' 
@@ -100,6 +122,12 @@ function DoctorDashboard() {
         </div>
       )}
 
+      {actionError && (
+        <div className="called-toast-banner" style={{ backgroundColor: '#ef4444', color: '#fff' }}>
+          <span>{actionError}</span>
+        </div>
+      )}
+
       {/* Doctor Header */}
       <header className="doctor-header-bar">
         <div className="header-inner">
@@ -109,17 +137,17 @@ function DoctorDashboard() {
             </div>
             <div>
               <h1>Doctor & Staff Dispatch Portal</h1>
-              <p>Real-Time Patient Flow Management • Counter Dispatch Console</p>
+              <p>Authenticated Staff: <strong>{user?.name || 'On-Duty Doctor'}</strong> ({user?.department || 'General'} OPD)</p>
             </div>
           </div>
           <div className="header-actions">
             <div className="doctor-profile-chip">
               <span className="online-indicator"></span>
-              <span className="doc-role">On-Duty Staff</span>
+              <span className="doc-role">{user?.role ? user.role.toUpperCase() : 'DOCTOR'}</span>
             </div>
             <button className="btn-logout" onClick={handleLogout}>
               <LogOut size={16} />
-              <span>Exit Portal</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
@@ -220,6 +248,32 @@ function DoctorDashboard() {
                         </div>
                         <h3 className="token-huge-num">#{counter.currentToken.tokenNumber}</h3>
                         <p className="patient-name-display">{counter.currentToken.patientName}</p>
+                        {counter.currentToken.phoneNumber && (
+                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>📞 {counter.currentToken.phoneNumber}</span>
+                        )}
+
+                        <button
+                          className="btn-complete-token"
+                          style={{
+                            marginTop: '0.75rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                            width: '100%',
+                            padding: '0.6rem',
+                            backgroundColor: '#10b981',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => handleCompleteToken(counter._id, counter.currentToken._id)}
+                        >
+                          <CheckSquare size={16} />
+                          <span>Complete Consultation</span>
+                        </button>
                       </div>
                     ) : (
                       <div className="counter-idle-state">
@@ -319,4 +373,3 @@ function DoctorDashboard() {
 }
 
 export default DoctorDashboard;
-

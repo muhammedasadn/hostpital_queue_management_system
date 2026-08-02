@@ -6,29 +6,31 @@ import {
   Building2, 
   RefreshCw, 
   CheckCircle2, 
-  ArrowLeft,
+  LogOut,
   Sliders,
-  Clock
+  Clock,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import queueApi from '../api/queueApi';
+import { useAuth } from '../context/AuthContext';
 import '../styles/AdminDashboard.css';
 
 function AdminDashboard() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [counters, setCounters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [callingCounterId, setCallingCounterId] = useState(null);
+  const [resetting, setResetting] = useState(false);
+  const [message, setMessage] = useState(null);
 
   useEffect(() => {
     fetchCounters();
 
-    socket.on('connect', () => {
-      console.log('Admin connected to server');
-    });
-
-    socket.on('tokenCalled', (data) => {
-      console.log('Token called in admin:', data);
+    socket.on('tokenCalled', () => {
       fetchCounters();
     });
 
@@ -65,6 +67,30 @@ function AdminDashboard() {
     }
   };
 
+  const handleResetQueues = async () => {
+    if (!window.confirm('⚠️ WARNING: Are you sure you want to reset all hospital patient queues? This will clear all active tokens!')) {
+      return;
+    }
+
+    try {
+      setResetting(true);
+      await queueApi.resetQueues();
+      setMessage('All hospital queues and counters have been reset successfully.');
+      await fetchCounters();
+      setTimeout(() => setMessage(null), 4000);
+    } catch (error) {
+      console.error('Error resetting queues:', error);
+      setMessage('Failed to reset system queues.');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   const activeCounterCount = counters.filter(c => c.currentToken).length;
 
   if (loading) {
@@ -82,22 +108,50 @@ function AdminDashboard() {
         
         {/* Navigation & Header */}
         <div className="admin-topbar">
-          <Link to="/" className="btn-back-link">
-            <ArrowLeft size={18} /> Exit Admin Panel
-          </Link>
           <div className="admin-badge">
-            <ShieldCheck size={16} /> Hospital Operations Hub
+            <ShieldCheck size={16} /> Hospital System Administrator Hub
           </div>
+          <button className="btn-back-link" onClick={handleLogout} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
+            <LogOut size={18} /> Sign Out ({user?.name || 'Admin'})
+          </button>
         </div>
+
+        {message && (
+          <div style={{
+            padding: '1rem',
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            color: '#1d4ed8',
+            borderRadius: '12px',
+            marginBottom: '1.5rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <CheckCircle2 size={20} />
+            <span>{message}</span>
+          </div>
+        )}
 
         <div className="admin-hero">
           <div className="hero-titles">
-            <h1>Counter Management Panel</h1>
-            <p>Control station counters, monitor dispatch queues, and trigger live token calls across hospital counters.</p>
+            <h1>Enterprise Admin Management</h1>
+            <p>Control station counters, monitor dispatch queues, and execute system-wide OPD queue resets.</p>
           </div>
-          <button onClick={fetchCounters} className="btn-refresh-admin">
-            <RefreshCw size={16} /> Sync Status
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button onClick={fetchCounters} className="btn-refresh-admin">
+              <RefreshCw size={16} /> Sync Status
+            </button>
+            <button
+              onClick={handleResetQueues}
+              disabled={resetting}
+              className="btn-refresh-admin"
+              style={{ backgroundColor: '#ef4444', borderColor: '#dc2626', color: 'white' }}
+            >
+              <RotateCcw size={16} /> {resetting ? 'Resetting...' : 'Reset All Queues'}
+            </button>
+          </div>
         </div>
 
         {/* Live Admin Metrics */}
@@ -127,8 +181,8 @@ function AdminDashboard() {
               <CheckCircle2 size={22} />
             </div>
             <div>
-              <span className="metric-label">System Readiness</span>
-              <strong className="metric-number">100%</strong>
+              <span className="metric-label">Security Shield</span>
+              <strong className="metric-number">JWT Active</strong>
             </div>
           </div>
         </div>
@@ -204,4 +258,3 @@ function AdminDashboard() {
 }
 
 export default AdminDashboard;
-
