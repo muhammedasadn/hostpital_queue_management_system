@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Mail, Lock, LogIn, AlertCircle, Sparkles } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 import '../styles/Login.css';
 
 const Login = () => {

@@ -9,8 +9,7 @@ import {
   LogOut,
   Sliders,
   Clock,
-  RotateCcw,
-  AlertTriangle
+  RotateCcw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import socket from '../socket';

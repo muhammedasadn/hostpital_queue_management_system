@@ -12,8 +12,7 @@ import {
   Building2,
   Sparkles,
   Volume2,
-  CheckSquare,
-  ShieldCheck
+  CheckSquare
 } from 'lucide-react';
 import queueApi from '../api/queueApi';
 import socket from '../socket';
