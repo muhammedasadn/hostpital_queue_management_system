@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Activity, CalendarPlus, Search, ListFilter, ShieldCheck, Home, Stethoscope, LogIn, LogOut, User } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { Activity, CalendarPlus, Search, ListFilter, Home, Stethoscope, LogIn, LogOut } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleSelection from './pages/RoleSelection';
@@ -76,14 +76,6 @@ function Navigation() {
             <span>Doctor Portal</span>
           </Link>
 
-          <Link
-            to="/admin"
-            className={`nav-link admin-pill ${isActive('/admin') ? 'active' : ''}`}
-          >
-            <ShieldCheck size={18} />
-            <span>Admin</span>
-          </Link>
-
           {user ? (
             <button
               onClick={logout}
@@ -131,7 +123,7 @@ function App() {
           <Navigation />
           <main className="main-viewport">
             <Routes>
-              {/* Role Selection */}
+              {/* Role Selection Landing Page */}
               <Route path="/" element={<RoleSelection />} />
 
               {/* Public Patient Routes */}
@@ -143,7 +135,7 @@ function App() {
               {/* Staff Auth Route */}
               <Route path="/login" element={<Login />} />
 
-              {/* Guarded Doctor/Admin Routes */}
+              {/* Guarded Doctor Portal Route */}
               <Route
                 path="/doctor-dashboard"
                 element={
@@ -152,6 +144,8 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Single Permanent Admin Route */}
               <Route
                 path="/admin"
                 element={
@@ -160,6 +154,9 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Redirect legacy /admin-dashboard to permanent /admin route */}
+              <Route path="/admin-dashboard" element={<Navigate to="/admin" replace />} />
             </Routes>
           </main>
         </div>

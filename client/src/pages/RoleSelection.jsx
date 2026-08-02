@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserCheck, Stethoscope, ShieldCheck, Activity, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { UserCheck, Stethoscope, Activity, ArrowRight, CheckCircle2 } from 'lucide-react';
 import '../styles/RoleSelection.css';
 
 function RoleSelection() {
@@ -14,8 +14,6 @@ function RoleSelection() {
         navigate('/patient-dashboard');
       } else if (role === 'doctor') {
         navigate('/doctor-dashboard');
-      } else if (role === 'admin') {
-        navigate('/admin');
       }
     }, 250);
   };
@@ -85,30 +83,6 @@ function RoleSelection() {
               <ArrowRight size={18} />
             </button>
           </div>
-
-          {/* Admin Card */}
-          <div
-            className={`role-card admin-theme ${selectedRole === 'admin' ? 'selected' : ''}`}
-            onClick={() => handleRoleSelect('admin')}
-          >
-            <div className="role-badge">For Administrators</div>
-            <div className="icon-container">
-              <ShieldCheck size={36} />
-            </div>
-            <h2>Admin Dashboard</h2>
-            <p>Monitor all active hospital counters, system health, and token assignments.</p>
-
-            <ul className="role-features">
-              <li><CheckCircle2 size={16} /> Full counter assignment control</li>
-              <li><CheckCircle2 size={16} /> Real-time system socket monitoring</li>
-              <li><CheckCircle2 size={16} /> Queue throughput statistics</li>
-            </ul>
-
-            <button className="role-action-btn">
-              <span>Enter Admin Console</span>
-              <ArrowRight size={18} />
-            </button>
-          </div>
         </div>
 
         <footer className="role-footer">
@@ -120,4 +94,3 @@ function RoleSelection() {
 }
 
 export default RoleSelection;
-
